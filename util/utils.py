@@ -36,11 +36,11 @@ def recv_msg(sock, expect_msg_type=None):
     msg_len = struct.unpack(">I", sock.recv(4))[0]
     msg = sock.recv(msg_len, socket.MSG_WAITALL)
     msg = pickle.loads(msg)
-    print(msg[0], 'received from', sock.getpeername())
+    print(msg[0], 'received from', sock.getpeername(), " with size of", msg_len, "bytes.")
 
     if (expect_msg_type is not None) and (msg[0] != expect_msg_type):
         raise Exception("Expected " + expect_msg_type + " but received " + msg[0])
-    return msg
+    return msg, msg_len
 
 
 def moving_average(param_mvavr, param_new, movingAverageHoldingParam):

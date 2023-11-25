@@ -21,7 +21,7 @@ class ControlAlgAdaptiveTauServer:
         self.rho_adapt_mvaverage = None
 
     def compute_new_tau(self, data_size_local_all, data_size_total, it_each_local, it_each_global, max_time,
-                        step_size, tau, use_min_loss):
+                        step_size, tau, use_min_loss, msg_size, bandwidth):
 
         beta_adapt = 0
         delta_adapt = 0
@@ -29,10 +29,11 @@ class ControlAlgAdaptiveTauServer:
         global_grad_global_weight = np.zeros(self.dim_w)
 
         local_grad_global_weight_all = []
+        delta_list = []
 
         control_param_computed = False
         for n in range(0, self.n_nodes):
-            msg = recv_msg(self.client_sock_all[n], 'MSG_CONTROL_PARAM_COMPUTED_CLIENT_TO_SERVER')
+            msg, _ = recv_msg(self.client_sock_all[n], 'MSG_CONTROL_PARAM_COMPUTED_CLIENT_TO_SERVER')
             # ['MSG_CONTROL_PARAM_COMPUTED_CLIENT_TO_SERVER', control_param_computed]
             control_param_computed_this_client = msg[1]  # Boolean parameter specifying whether parameters for
                                                          # control algorithm follows this message
@@ -41,7 +42,7 @@ class ControlAlgAdaptiveTauServer:
 
             # Receive additional message for control algorithm if it has been computed
             if control_param_computed_this_client:
-                msg = recv_msg(self.client_sock_all[n], 'MSG_BETA_RHO_GRAD_CLIENT_TO_SERVER')
+                msg, _ = recv_msg(self.client_sock_all[n], 'MSG_BETA_RHO_GRAD_CLIENT_TO_SERVER')
                 # ['MSG_BETA_RHO_GRAD_CLIENT_TO_SERVER', betaAdapt, rhoAdapt, localGradGlobalWeight]
 
                 beta_adapt_local = msg[1]
@@ -62,8 +63,10 @@ class ControlAlgAdaptiveTauServer:
             rho_adapt /= data_size_total
 
             for i in range(0, self.n_nodes):
-                delta_adapt += data_size_local_all[i] * linalg.norm(local_grad_global_weight_all[i]
-                                                                    - global_grad_global_weight)
+                delta_i = linalg.norm(local_grad_global_weight_all[i] - global_grad_global_weight)
+                print("     Delta i:", delta_i)
+                delta_list.append(delta_i)
+                delta_adapt += data_size_local_all[i] * delta_i
             delta_adapt /= data_size_total
 
             # compute moving averages
@@ -109,7 +112,14 @@ class ControlAlgAdaptiveTauServer:
         else:
             tau_new = tau
 
-        return min(tau_new, tau_max)
+        sorted_indices = sorted(enumerate(delta_list), key=lambda x: x[1], reverse=True)
+        ranks = [index for index, _ in sorted_indices]
+        print("Size of msg", msg_size, "over bandwidth of", bandwidth, ". m/B=", msg_size / bandwidth)
+        print("Delta:", delta_list)
+        print("Divergence rank:", ranks)
+        adaptive_tau = min(tau_new, tau_max)
+
+        return adaptive_tau, ranks
 
     def __getstate__(self):
         # To remove socket from pickle

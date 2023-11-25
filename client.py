@@ -22,7 +22,7 @@ sim_prev = None
 
 try:
     while True:
-        msg = recv_msg(sock, 'MSG_INIT_SERVER_TO_CLIENT')
+        msg, _ = recv_msg(sock, 'MSG_INIT_SERVER_TO_CLIENT')
         # ['MSG_INIT_SERVER_TO_CLIENT', model_name, dataset, num_iterations_with_same_minibatch_for_tau_equals_one, step_size, batch_size,
         # total_data, use_control_alg, indices_this_node, read_all_data_for_stochastic, use_min_loss, sim]
 
@@ -82,7 +82,7 @@ try:
         while True:
             print('---------------------------------------------------------------------------')
 
-            msg = recv_msg(sock, 'MSG_WEIGHT_TAU_SERVER_TO_CLIENT')
+            msg, _ = recv_msg(sock, 'MSG_WEIGHT_TAU_SERVER_TO_CLIENT')
             # ['MSG_WEIGHT_TAU_SERVER_TO_CLIENT', w_global, tau, is_last_round, prev_loss_is_min]
             w = msg[1]
             tau_config = msg[2]
